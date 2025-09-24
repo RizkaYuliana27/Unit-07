@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>RBD – UNIT 7 (Interactive)</title>
+<style>
+  :root {
+    --blue:#2a75bb;
+    --ink:#0b0b0c;
+    --line:#2f2f2f;
+    --paper:#f7f7f8;
+  }
+  html,body{height:100%}
+  body{
+    margin:0;
+    background:var(--paper);
+    font-family:Segoe UI,Arial,Helvetica,sans-serif;
+    overflow-x:auto; overflow-y:auto;
+  }
+  .stage{
+    position:relative;
+    width:3200px;
+    height:860px;
+  }
+  svg.wires{
+    position:absolute;
+    inset:0;
+    width:100%; height:100%;
+    pointer-events:none;
+  }
+  .wire{ stroke:var(--line); stroke-width:3; fill:none; }
+  .wire.faint{ stroke-opacity:.35 }
+.node{
+  position:absolute;
+  width:150px; height:100px;
+  transform:translate(-75px,-50px);
+  cursor:pointer; user-select:none;
+  transition:transform .2s ease, box-shadow .2s ease;
+}
+.node:hover{
+  transform:translate(-75px,-50px) scale(1.05);
+  z-index:2;
+}
+  .node.hidden{ display:none }
+  .node.left .card{ background:#3498db33 }  /* biru transparan */
+  .node.right .card{ background:#e74c3c33 } /* merah transparan */
+.card{
+  position:absolute; inset:0;
+  background:linear-gradient(145deg, #ffffff, #f1f1f1);
+  border:2px solid #444;
+  border-radius:12px;
+  box-shadow:0 4px 8px rgba(0,0,0,0.15);
+  transition:background .3s, box-shadow .3s;
+}
+.node:hover .card{
+  box-shadow:0 6px 14px rgba(0,0,0,0.25);
+}
+.cap{
+  position:absolute;
+  left:-2px; right:-2px; top:-28px; height:28px;
+  background:#2a75bb;
+  border:2px solid #444; border-bottom:0;
+  border-radius:10px 10px 0 0;
+  display:flex; align-items:center; justify-content:center;
+  color:#fff;
+  font-weight:700;
+  font-size:13px;
+  letter-spacing:.4px;
+  box-shadow:0 2px 4px rgba(0,0,0,0.2);
+}
+  .cap.left{ color:#3498db }
+  .cap.right{ color:#e74c3c }
+.mat{
+  position:absolute; inset:0;
+  display:grid;
+  grid-template-columns:35px 1fr;
+  align-content:center;
+  row-gap:8px;
+  padding:12px 10px 10px 10px;
+  font-size:15px;
+  font-weight:600;
+}
+
+.mat .lbl {
+  color:#333;
+  text-align:center;
+  border-right:2px solid #ddd;
+  padding-right:6px;
+  font-size:15px;
+  font-weight:700;
+}
+
+.mat .v {
+  text-align:center;
+  font-variant-numeric:tabular-nums;
+  font-size:20px;
+  font-weight:700;
+  color:#2a75bb;
+}
+
+.node.end-node {
+  opacity: 0;           /* transparan penuh */
+  pointer-events: none; /* tidak bisa diklik */
+}
+  .lbl{ color:#000; font-weight:600; text-align:center }
+  .v{ text-align:center; font-variant-numeric:tabular-nums }
+  .node.selected .cap{
+  background:#e74c3c;
+  color:#fff !important;
+}
+  .banner{
+    position:absolute;
+    left:24px; right:24px; top:24px; height:24px;
+    background:#1f9a48; border-radius:4px;
+    color:#fff; display:flex; align-items:center; padding:0 10px;
+    font-weight:700; font-size:12px; letter-spacing:.3px;
+  }
+  .legend{ position:absolute; left:36px; top:60px; font-size:12px; color:#111; }
+  @media (max-width:1100px){ .stage{ height:960px } }
+</style>
+</head>
+<body>
+<div class="stage" id="stage">
+  <div class="banner">UNIT 7</div>
+  <div class="legend">RELIABILITY : 100% &nbsp;&nbsp; AVAILABILITY : 100%</div>
+  <svg class="wires" id="wires" viewBox="0 0 3200 860" preserveAspectRatio="none"></svg>
+</div>
+
+<script>
+function n(id, label, x, y, opts = {}) {
+  return {
+    id,
+    label,
+    x,
+    y,
+    R: opts.R || "100.0%",
+    A: opts.A || "100.0%",
+    title: opts.title || ""
+  };
+}
+function e(from,to){ return {from,to} }
+
+const NODES = [
+  // ATAS
+  n("ST","Start",-100,800,{title:"START"}),
+    
+  n("A1", "7CCH-CNVR-700", 250, 800, {title:"COAL HANDLING SYSTEM"}),
+
+  n("B1","7CCH-CNVR-900A",500,650,{title:"COAL CONVEYOR LINE A"}), 
+  n("B2","7CCH-CNVR-900B",500,950,{title:"COAL CONVEYOR LINE B"}),
+  
+  n("C1","7CCH-BIN-200",750,800,{title:"CRUSHER SURGE BIN"}),
+  n("C2","7BA-CNVR-100",1000,800,{title:"SUBMERGED CHAIN CONVEYOR"}),
+  
+  n("D1","7BF-SILO-500A",1250,150,{title:"COAL SILO A"}),
+  n("D2","7BF-SILO-500B",1250,350,{title:"COAL SILO B"}),
+  n("D3","7BF-SILO-500C",1250,650,{title:"COAL SILO C"}),
+  n("D4","7BF-SILO-500D",1250,950,{title:"COAL SILO D"}),
+  n("D5","7BF-SILO-500E",1250,1250,{title:"COAL SILO E"}),
+  n("D6","7BF-SILO-500F",1250,1450,{title:"COAL SILO F"}),
+
+  n("E1","7BF-PVR-500A",1650,150,{title:"PULVERIZER A"}),
+  n("E2","7BF-PVR-500B",1650,350,{title:"PULVERIZER B"}),
+  n("E3","7BF-PVR-500C",1650,650,{title:"PULVERIZER C"}),
+  n("E4","7BF-PVR-500D",1650,950,{title:"PULVERIZER D"}),
+  n("E5","7BF-PVR-500E",1650,1250,{title:"PULVERIZER E"}),
+  n("E6","7BF-PVR-500F",1650,1450,{title:"PULVERIZER F"}),
+
+  n("F1","7BG-FAN-510A",2050,650,{title:"FORCE DRAFT FAN A"}),
+  n("F2","7BG-FAN-510B",2050,950,{title:"FORCE DRAFT FAN B"}),
+
+  n("G1","7BF-FAN-600A",2350,650,{title:"PRIMARY AIR FAN A"}),
+  n("G2","7BF-FAN-600B",2350,950,{title:"PRIMARY AIR FAN B"}),
+
+  n("H1","7BF-HTR-600",2650,800,{title:"PRIMARY AIR HEATER"}),
+
+  n("I1","7BG-HTR-510A",2900,650,{title:"SECONDARY AIR HEATER A"}),
+  n("I2","7BG-HTR-510B",2900,950,{title:"SECONDARY AIR HEATER B"}),
+
+  n("J1","7BG-PCP-800A",3200,650,{title:"ELECTROSTATIC PRECIPITATOR A"}),
+  n("J2","7BG-PCP-800B",3200,950,{title:"ELECTROSTATIC PRECIPITATOR B"}),
+
+  n("K1","7BG-FAN-500A",3500,650,{title:"INDUCED DRAFT FAN A"}),
+  n("K2","7BG-FAN-500B",3500,950,{title:"INDUCED DRAFT FAN B"}),
+
+  n("L1","7FC-SCB-100",3800,650,{title:"SEAWATER SCRUBBER ABSORBER A"}),
+  n("L2","7FC-SCB-200",3800,950,{title:"SEAWATER SCRUBBER ABSORBER B"}),
+
+  n("M1","7FW-DEA-500",4100,800,{title:"DEAERATOR"}),
+  n("M2","7FW-HTR",4400,800,{title:"FEED WATER HEATER"}),
+
+  n("N1","7FW-P-100A",4650,450,{title:"TD BOILER FEEDWATER PUMP A"}),
+  n("N2","7FW-P-100B",4650,800,{title:"TD BOILER FEEDWATER PUMP A"}),
+  n("N3","7FW-P-200",4650,1150,{title:"MD BOILER FEED PUMP"}),
+
+  n("O1","7FW-WWL-100",4900,800,{title:"BOILER FEED WATER WATER WALL"}),
+  n("O2","7BS-DRUM-200",5100,800,{title:"STEAM DRUM"}),
+  n("O3","7FW-ECON-100",5300,800,{title:"ECONOMIZER"}),
+  n("O4","7BS-SH",5500,800,{title:"BOILER - SUPER HEATER SYSTEM"}),
+  n("O5","7BS-RHTR",5700,800,{title:"BOILER STEAM REHEATER"}),
+
+  //TENGAH
+  n("AA1","7FW-P-300A",500,1800,{title:"BOILER CIRCULATING PUMP A"}),
+  n("AA2","7FW-P-300B",500,2150,{title:"BOILER CIRCULATING PUMP B"}),
+  n("AA3","7FW-P-300C",500,2550,{title:"BOILER CIRCULATING PUMP C"}),
+
+  n("AB1","7CM-P-100A",800,1800,{title:"CONDENSATE PUMP A"}),
+  n("AB2","7CM-P-100B",800,2150,{title:"CONDENSATE PUMP B"}),
+  n("AB3","7CM-P-100C",800,2550,{title:"CONDENSATE PUMP C"}),
+
+  n("AC1","P7PCC",1100,2150,{title:"CLOSED COOLING WATER SYSTEM"}),
+
+  n("AD1","7ID-SCN-100A",1400,1800,{title:"SEAWATER DRUM SCREEN A"}),
+  n("AD2","7ID-SCN-100B",1400,2150,{title:"SEAWATER DRUM SCREEN B"}),
+  n("AD3","7ID-SCN-100C",1400,2550,{title:"SEAWATER DRUM SCREEN C"}),
+
+  n("AE1","7CW-P-100A",1700,1800,{title:"CIRCULATING WATER PUMP A"}),
+  n("AE2","7CW-P-100B",1700,2150,{title:"CIRCULATING WATER PUMP B"}),
+  n("AE3","7CW-P-100C",1700,2550,{title:"CIRCULATING WATER PUMP C"}),
+
+  n("AF1","7CV-P-100A",2000,1800,{title:"CONDENSER VACUUM PUMP A"}),
+  n("AF2","7CV-P-100B",2000,2150,{title:"CONDENSER VACUUM PUMP B"}),
+  n("AF3","7CV-P-100C",2000,2550,{title:"CONDENSER VACUUM PUMP C"}),
+
+  n("AG1","7CM-COND-100A",2300,1950,{title:"MAIN CONDENSER A"}),
+  n("AG2","7CM-COND-100B",2300,2350,{title:"MAIN CONDENSER B"}),
+
+  n("AH1","7LT-P-400A",2600,1950,{title:"MAIN TURBINE EHC OIL PUMP A"}),
+  n("AH2","7LT-P-400B",2600,2350,{title:"MAIN TURBINE EHC OIL PUMP B"}),
+
+  n("AI1","7LT-P-100A",2900,1800,{title:"TURBINE LUBE AND SEAL OIL PUMP A"}),
+  n("AI2","7LT-P-100B",2900,2150,{title:"TURBINE LUBE AND SEAL OIL PUMP B"}),
+  n("AI3","7LT-P-300",2900,2550,{title:"EMERGENCY TURBINE BEARING OIL PUMP 7"}),
+
+  n("AJ1","7TG-SV-1",3200,1950,{title:"MAIN STEAM STOP VALVE #1"}),
+  n("AJ2","7TG-SV-2",3200,2350,{title:"MAIN STEAM STOP VALVE #2"}),
+
+  n("AK1","7TG-CV-1",3500,1650,{title:"MAIN TURBINE CONTROL VALVE HP STEAM LINE 1"}),
+  n("AK2","7TG-CV-2",3500,1950,{title:"MAIN TURBINE CONTROL VALVE HP STEAM LINE 2"}),
+  n("AK3","7TG-CV-3",3500,2350,{title:"MAIN TURBINE CONTROL VALVE HP STEAM LINE 3"}),
+  n("AK4","7TG-CV-4",3500,2650,{title:"MAIN TURBINE CONTROL VALVE HP STEAM LINE 4"}),
+
+  n("AL1","7TG-EV-1",3800,1950,{title:"COMBINED REHEAT VALVE #1 EQUALIZING VALVE"}),
+  n("AL2","7TG-EV-2",3800,2350,{title:"COMBINED REHEAT VALVE #2 EQUALIZING VALVE"}),
+
+  n("AM1","7TG-TRB-200A",4100,2150,{title:"HIGH PRESSURE TURBINE"}),
+  n("AM2","7TG-TRB-200B",4400,2150,{title:"REHEAT TURBINE"}),
+  n("AM3","7TG-TRB-200C",4650,2150,{title:"LOW PRESSURE TURBINE  A"}),
+  n("AM4","7TG-TRB-200D",4900,2150,{title:"LOW PRESSURE TURBINE  B"}),
+  n("AM5","7TG-GEN-100",5100,2150,{title:"MAIN GENERATOR"}),
+  n("AM6","7BEG-001",5300,2150,{title:"GENERATOR EXCITATION SYSTEM"}),
+  n("AM7","7BGU-001",5500,2150,{title:"GENERATOR AUXILIARY SYSTEM"}),
+  n("AM8","7EX-IPB-100",5700,2150,{title:"ISOLATED PHASE BUS"}),
+
+  //BAWAH
+  n("BA1","7XFMR-GSU",500,3800,{title:"GENERATOR STEP UP TRANSFORMER"}),
+  n("BA2","7EZ-GIS-GSU",700,3800,{title:"500KV SYSTEM GAS INSULATED SWITCH GEAR"}),
+  n("BA3","7QAU-001",900,3800,{title:"UNIT AUXILIARY SYSTEM"}),
+  n("BA4","7EB-UPS",1100,3800,{title:"POWER STATION - DC SUPPLY UPS SYSTEM"}),
+  n("BA5","P7SGY",1300,3800,{title:"FIRE PROTECTION CONTROL & PROTECTION SYSTEM"}),
+
+  n("BB1","7CFC-P-600A",1600,3300,{title:"ABSORBER PUMP A"}),
+  n("BB2","7CFC-P-600B",1600,3800,{title:"ABSORBER PUMP B"}),
+  n("BB3","7CFC-P-600C",1600,4300,{title:"ABSORBER PUMP C"}),
+
+  n("BC1","7CFC-FAN-701A",1900,3300,{title:"AERATION FAN A"}),
+  n("BC2","7CFC-FAN-701B",1900,3800,{title:"AERATION FAN B"}),
+  n("BC3","7CFC-FAN-701C",1900,4300,{title:"AERATION FAN C"}),
+
+  n("BD1","7CCA-CMP-100A",2200,3000,{title:"STATION COMPRESSOR A"}),
+  n("BD2","7CCA-CMP-100B",2200,3300,{title:"STATION COMPRESSOR B"}),
+  n("BD3","7CCA-CMP-100C",2200,3800,{title:"STATION COMPRESSOR C"}),
+  n("BD4","7CCA-CMP-100D",2200,4300,{title:"STATION COMPRESSOR D"}),
+  n("BD5","7CCA-CMP-100E",2200,4600,{title:"STATION COMPRESSOR E"}),
+
+  n("BE1","7CRO-P-100A",2500,3300,{title:"RO / HYPO SUPPLY PUMP A"}),
+  n("BE2","7CRO-P-100B",2500,3800,{title:"RO / HYPO SUPPLY PUMP B"}),
+  n("BE3","7CRO-P-100C",2500,4300,{title:"RO / HYPO SUPPLY PUMP C"}),
+
+  n("BF1","7CRO-RO-100A",2800,3550,{title:"DESALINATION TRAIN A"}),
+  n("BF2","7CRO-RO-100B",2800,4050,{title:"DESALINATION TRAIN B"}),
+
+  n("BG1","7CRO-P-910A",3100,3300,{title:"RO HP FEED PUMP A"}),
+  n("BG2","7CRO-P-910B",3100,3800,{title:"RO HP FEED PUMP B"}),
+  n("BG3","7CRO-P-910C",3100,4300,{title:"RO HP FEED PUMP C"}),
+
+  n("BH1","7CDW-RO-100A",3400,3550,{title:"DEMINERALIZATION TRAIN A"}),
+  n("BH2","7CDW-RO-100B",3400,4050,{title:"DEMINERALIZATION TRAIN B"}),
+
+  n("BI1","7PDU-001",3800,3800,{title:"DISCHARGE CANAL"}),
+  n("BI2","7RSG-001",4100,3800,{title:"CEMS STACK"}),
+  n("BI3","7CJAD-001",4400,3800,{title:"CONTROL SYSTEM (DCS, MARKVI, PLC)"}),
+  n("BI4","7QFG-001",4700,3800,{title:"FIRE / EXPLOSIONS SYSTEM"}),
+];
+
+
+const EDGES = [
+  
+  //ATAS
+
+  e("ST","A1"),
+  e("A1","B1"), e("A1","B2"),
+  e("B1","C1"), e("B2","C1"),
+  e("C1","C2"),
+  e("C2","D1"), e("C2","D2"), e("C2","D3"), e("C2","D4"), e("C2","D5"), e("C2","D6"),
+  e("D1","E6"), e("D2","E5"), e("D3","E4"), e("D4","E3"), e("D5","E2"), e("D6","E1"),
+  e("E1","F1"), e("E2","F1"), e("E3","F1"), e("E4","F1"), e("E5","F1"), e("E6","F1"),
+  e("E1","F2"), e("E2","F2"), e("E3","F2"), e("E4","F2"), e("E5","F2"), e("E6","F2"),
+  e("F1","G2"), e("F2","G1"),
+  e("G1","H1"), e("G2","H1"),
+  e("H1","I1"), e("H1","I2"),
+  e("I1","J2"), e("I2","J1"),
+  e("J1","K2"), e("J2","K1"),
+  e("K1","L2"), e("K2","L1"),
+  e("L1","M1"), e("L2","M1"),
+  e("M1","M2"),
+  e("M2","N1"), e("M2","N2"), e("M2","N3"),
+  e("N1","O1"), e("N2","O1"), e("N3","O1"),
+  e("O1","O2"), e("O2","O3"), e("O3","O4"), e("O4","O5"), e("O5","O6"),
+
+  //TENGAH
+
+  e("O5","AA2"), e("AA2","AA1"), e("AA2","AA3"),
+  e("AA1","AB3"), e("AA2","AB2"), e("AA3","AB1"),
+  e("AB1","AC1"), e("AB2","AC1"), e("AB3","AC1"),
+  e("AC1","AD1"), e("AC1","AD2"), e("AC1","AD3"),
+  e("AD1","AE3"), e("AD2","AE2"), e("AD3","AE1"),
+  e("AE1","AF3"), e("AE2","AF2"), e("AE3","AF1"),
+  e("AF1","AG1"), e("AF2","AG1"), e("AF3","AG1"),
+  e("AF1","AG2"), e("AF2","AG2"), e("AF3","AG2"),
+  e("AG1","AH2"), e("AG2","AH1"),
+  e("AH1","AI3"), e("AH1","AI2"), e("AH1","AI1"),
+  e("AH2","AI3"), e("AH2","AI2"), e("AH2","AI1"),
+  e("AI1","AJ1"), e("AI2","AJ1"), e("AI3","AJ1"),
+  e("AI1","AJ2"), e("AI2","AJ2"), e("AI3","AJ2"),
+  e("AJ1","AK1"), e("AJ1","AK2"), e("AJ1","AK3"), e("AJ1","AK4"),
+  e("AJ2","AK1"), e("AJ2","AK2"), e("AJ2","AK3"), e("AJ2","AK4"),
+  e("AK1","AL1"), e("AK2","AL1"), e("AK3","AL1"), e("AK4","AL1"),
+  e("AK1","AL2"), e("AK2","AL2"), e("AK3","AL2"), e("AK4","AL2"),
+  e("AL1","AM1"), e("AL2","AM1"),
+  e("AM1","AM2"), e("AM2","AM3"), e("AM3","AM4"), e("AM4","AM5"), e("AM5","AM6"), e("AM6","AM7"), e("AM7","AM8"),
+
+  //BAWAH
+  e("AM8","BA1"),
+
+  e("BA1","BA2"), e("BA2","BA3"), e("BA3","BA4"), e("BA4","BA5"),
+  e("BA5","BB1"), e("BA5","BB2"), e("BA5","BB3"),
+  e("BB1","BC3"), e("BB2","BC2"), e("BB3","BC1"),
+  e("BC1","BD1"), e("BC1","BD2"), e("BC1","BD3"), e("BC1","BD4"), e("BC1","BD5"),
+  e("BC2","BD1"), e("BC2","BD2"), e("BC2","BD3"), e("BC2","BD4"), e("BC2","BD5"),
+  e("BC3","BD1"), e("BC3","BD2"), e("BC3","BD3"), e("BC3","BD4"), e("BC3","BD5"),
+  e("BD1","BE1"), e("BD1","BE2"), e("BD1","BE3"),
+  e("BD2","BE1"), e("BD2","BE2"), e("BD2","BE3"),
+  e("BD3","BE1"), e("BD3","BE2"), e("BD3","BE3"),
+  e("BD4","BE1"), e("BD4","BE2"), e("BD4","BE3"),
+  e("BD5","BE1"), e("BD5","BE2"), e("BD5","BE3"),
+  e("BE1","BF1"), e("BE1","BF2"),
+  e("BE2","BF1"), e("BE2","BF2"),
+  e("BE3","BF1"), e("BE3","BF2"),
+  e("BF1","BG1"), e("BF1","BG2"), e("BF1","BG3"),
+  e("BF2","BG1"), e("BF2","BG2"), e("BF2","BG3"),
+  e("BG1","BH1"), e("BG1","BH2"),
+  e("BG2","BH1"), e("BG2","BH2"),
+  e("BG3","BH1"), e("BG3","BH2"),
+  e("BH1","BI1"), e("BH2","BI1"),
+  e("BI1","BI2"), e("BI2","BI3"), e("BI3","BI4"),
+];
+
+const GROUPS = [
+  {type:"single", upstream:["A1"], downstream:"B1"},
+  {type:"single", upstream:["A1"], downstream:"B2"},
+  {type:"dual", upstream:["B1","B2"], downstream:"C1"},
+  {type:"single", upstream:["C1"], downstream:"C2"},
+  {type:"multi", upstream:["C2"], downstream:["D1", "D2", "D3", "D4", "D5", "D6"]},
+  {type:"multi", upstream:["D1", "D2", "D3", "D4", "D5", "D6"], downstream:["E1", "E2", "E3", "E4", "E5", "E6"]},
+  {type:"multi", upstream:["E1", "E2", "E3", "E4", "E5", "E6"], downstream:["F1", "F2"]},
+  {type:"multi", upstream:["F1", "F2"], downstream:["G1", "G2"]},
+  {type:"dual", upstream:["G1","G2"], downstream:"H1"},
+  {type:"multi", upstream:["H1"], downstream:["I1", "I2"]},
+  {type:"multi", upstream:["I1","I2"], downstream:["J1", "J2"]},
+  {type:"multi", upstream:["J1","J2"], downstream:["K1", "K2"]},
+  {type:"multi", upstream:["K1","K2"], downstream:["L1", "L2"]},
+  {type:"dual", upstream:["L1","L2"], downstream:"M1"},
+  {type:"single", upstream:["M1"], downstream:"M2"},
+  {type:"multi", upstream:["M2"], downstream:["N1", "N2","N3"]},
+  {type:"multi", upstream:["N1","N2","N3"], downstream:["O1"]},
+  {type:"single", upstream:["O1"], downstream:"O2"},
+  {type:"single", upstream:["O2"], downstream:"O3"},
+  {type:"single", upstream:["O3"], downstream:"O4"},
+  {type:"single", upstream:["O4"], downstream:"O5"},
+  {type:"multi", upstream:["O5"], downstream:["AA1","AA2","AA3"]},
+
+  //TENGAH
+
+  {type:"multi", upstream:["AA1","AA2","AA3"], downstream:["AB1","AB2","AB3"]},
+  {type:"multi", upstream:["AB1","AB2","AB3"], downstream:["AC1"]},
+  {type:"multi", upstream:["AC1"], downstream:["AD1","AD2","AD3"]},
+  {type:"multi", upstream:["AD1","AD2","AD3"], downstream:["AE1","AE2","AE3"]},
+  {type:"multi", upstream:["AE1","AE2","AE3"], downstream:["AF1","AF2","AF3"]},
+  {type:"multi", upstream:["AF1","AF2","AF3"], downstream:["AG1","AG2"]},
+  {type:"multi", upstream:["AG1","AG2"], downstream:["AH1","AH2"]},
+  {type:"multi", upstream:["AH1","AH2"], downstream:["AI1","AI2","AI3"]},
+  {type:"multi", upstream:["AI1","AI2","AI3"], downstream:["AJ1","AJ2"]},
+  {type:"multi", upstream:["AJ1","AJ2"], downstream:["AK1","AK2","AK3","AK4"]},
+  {type:"multi", upstream:["AK1","AK2","AK3","AK4"], downstream:["AL1","AL2"]},
+  {type:"multi", upstream:["AL1","AL2"], downstream:["AM1"]},
+  {type:"single", upstream:["AM1"], downstream:"AM2"},
+  {type:"single", upstream:["AM2"], downstream:"AM3"},
+  {type:"single", upstream:["AM3"], downstream:"AM4"},
+  {type:"single", upstream:["AM4"], downstream:"AM5"},
+  {type:"single", upstream:["AM5"], downstream:"AM6"},
+  {type:"single", upstream:["AM6"], downstream:"AM7"},
+  {type:"single", upstream:["AM7"], downstream:"AM8"},
+
+  //BAWAH
+
+  {type:"single", upstream:["AM8"], downstream:"BA1"},
+  {type:"single", upstream:["BA1"], downstream:"BA2"},
+  {type:"single", upstream:["BA2"], downstream:"BA3"},
+  {type:"single", upstream:["BA3"], downstream:"BA4"},
+  {type:"single", upstream:["BA4"], downstream:"BA5"},
+  {type:"multi", upstream:["BA5"], downstream:["BB1","BB2","BB3"]},
+  {type:"multi", upstream:["BB1","BB2","BB3"], downstream:["BC1","BC2","BC3"]},
+  {type:"multi", upstream:["BC1","BC2","BC3"], downstream:["BD1","BD2","BD3","BD4","BD5"]},
+  {type:"multi", upstream:["BD1","BD2","BD3","BD4","BD5"], downstream:["BE1","BE2","BE3"]},
+  {type:"multi", upstream:["BE1","BE2","BE3"], downstream:["BF1","BF2"]},
+  {type:"multi", upstream:["BF1","BF2"], downstream:["BG1","BG2","BG3"]},
+  {type:"multi", upstream:["BG1","BG2","BG3"], downstream:["BH1","BH2"]},
+  {type:"multi", upstream:["BH1","BH2"], downstream:["BI1"]},
+  {type:"single", upstream:["BI1"], downstream:"BI2"},
+  {type:"single", upstream:["BI2"], downstream:"BI3"},
+  {type:"single", upstream:["BI3"], downstream:"BI4"},
+];
+
+const stage = document.getElementById("stage");
+const wires = document.getElementById("wires");
+const nodeEls = new Map();
+let wireEls = [];
+
+// build nodes
+for (const node of NODES){
+  const el = document.createElement("div");
+  el.className = "node";
+  if (node.id === "ED") {
+    el.classList.add("end-node");
+  }
+  el.style.left = node.x + "px";
+  el.style.top  = node.y + "px";
+  el.dataset.id = node.id;
+  el.innerHTML = `
+    <div class="cap">${escapeHtml(node.label)}</div>
+    <div class="card"></div>
+    <div class="mat">
+      <div class="lbl">R</div><div class="v">${node.R}</div>
+      <div class="lbl">A</div><div class="v">${node.A}</div>
+    </div>`;
+  stage.appendChild(el);
+  nodeEls.set(node.id,el);
+
+  if (node.title && node.title.length > 0) {
+    const titleEl = document.createElement("div");
+    titleEl.textContent = node.title;
+    titleEl.style.position = "absolute";
+    titleEl.style.left = (node.x - 70) + "px";  // node x minus setengah lebar node (140/2)
+    titleEl.style.top = (node.y - 110 - 24) + "px";  // node y minus tinggi node (86) minus jarak ekstra (24px)
+    titleEl.style.width = "140px";
+    titleEl.style.textAlign = "center";
+    titleEl.style.fontWeight = "700";
+    titleEl.style.fontSize = "14px";
+    titleEl.style.color = "#222";
+    titleEl.style.userSelect = "none";
+    titleEl.style.pointerEvents = "none";
+    stage.appendChild(titleEl);
+  }
+
+  el.addEventListener("click",()=>{
+    el.classList.toggle("selected");
+    evaluateVisibility();
+    markRelations(node.id);
+  });
+}
+
+// draw wires
+function drawAllWires(){
+  wires.innerHTML=""; // 1. Kosongkan semua garis SVG yang sudah ada
+  wireEls=[]; // 2. Kosongkan daftar penyimpanan elemen garis
+  for (const {from,to} of EDGES){ // 3. Iterasi semua sambungan
+    const a=NODES.find(n=>n.id===from); // 4. Temukan node asal (a)
+    const b=NODES.find(n=>n.id===to); // 5. Temukan node tujuan (b)
+    if (!a||!b) continue; // 6. Lewati jika salah satu tidak ditemukan
+    const path=document.createElementNS("http://www.w3.org/2000/svg","path"); // 7. Buat elemen SVG <path>
+    path.setAttribute("class","wire"); // 8. Tambahkan class CSS "wire"
+    path.setAttribute("d", elbowPath(a.x,a.y,b.x,b.y, from, to)); // 9. Tentukan bentuk path berdasarkan koordinat
+    wires.appendChild(path);  // 10. Tambahkan path ke elemen SVG di DOM
+    wireEls.push({key:from+"->"+to,el:path,from,to}); // 11. Simpan referensi untuk keperluan update
+  }
+}
+
+// path shape
+function elbowPath(x1, y1, x2, y2, from = "", to = "") {
+  // Garis khusus: O5 ke AA2 (hindari tabrakan)
+  if (from === "O5" && to === "AA2") {
+    return `M ${x1 + 70} ${y1}
+            L ${x1 + 200} ${y1}
+            L ${x1 + 200} ${y2 + -600}
+            L ${x2 - 200} ${y2 + -600}
+            L ${x2 - 70} ${y2}`;
+  }
+
+    if (from === "AM8" && to === "BA1") {
+    return `M ${x1 + 70} ${y1}
+            L ${x1 + 200} ${y1}
+            L ${x1 + 200} ${y2 + -1000}
+            L ${x2 - 200} ${y2 + -1000}
+            L ${x2 - 70} ${y2}`;
+  }
+
+  // Default logic
+  const midX = (x1 + x2) / 2;
+  return `M ${x1 + 70} ${y1}
+          L ${midX} ${y1}
+          L ${midX} ${y2}
+          L ${x2 - 70} ${y2}`;
+}
+
+
+
+// maps
+function buildChildMap(){
+  const m=new Map();
+  for (const {from,to} of EDGES){
+    if (!m.has(from)) m.set(from,[]);
+    m.get(from).push(to);
+  }
+  return m;
+}
+function buildParentMap(){
+  const m = new Map();
+  for (const {upstream, downstream, exclude} of GROUPS){
+    const downs = Array.isArray(downstream) ? downstream : [downstream];
+    downs.forEach(to => {
+      if (exclude && exclude.includes(to)) return;
+      if (!m.has(to)) m.set(to, []);
+      m.get(to).push(...upstream);
+    });
+  }
+  return m;
+}
+
+// visibility
+function evaluateVisibility(){
+  // Awalnya semua blok ditampilkan
+  for (const id of nodeEls.keys()){
+    nodeEls.get(id).classList.remove('hidden');
+  }
+
+  const toHide = new Set();
+  const childMap = buildChildMap();
+
+  const collectDownstream = (startId, exclude=[]) => {
+    const stack = [startId];
+    while (stack.length){
+      const cur = stack.pop();
+      if (toHide.has(cur) || exclude.includes(cur)) continue;
+      toHide.add(cur);
+
+      const kids = childMap.get(cur) || [];
+      for (const k of kids){
+        if (!exclude.includes(k)){
+          stack.push(k);
+        }
+      }
+    }
+  };
+
+
+  for (const g of GROUPS) {
+    const upstreams = Array.isArray(g.upstream) ? g.upstream : [g.upstream];
+    const downstreams = Array.isArray(g.downstream) ? g.downstream : [g.downstream];
+    const exclude = g.exclude || [];
+
+    if (g.type === 'single') {
+      const uEl = nodeEls.get(upstreams[0]);
+      if (uEl?.classList.contains('selected')) {
+        downstreams.forEach(d => collectDownstream(d, exclude));
+      }
+
+    } else if (g.type === 'dual') {
+      const aSel = nodeEls.get(upstreams[0])?.classList.contains('selected');
+      const bSel = nodeEls.get(upstreams[1])?.classList.contains('selected');
+      if (aSel && bSel) {
+        downstreams.forEach(d => collectDownstream(d, exclude));
+      }
+
+    } else if (g.type === 'multi') {
+      const allSelected = upstreams.every(u => nodeEls.get(u)?.classList.contains('selected'));
+      if (allSelected) {
+        downstreams.forEach(d => collectDownstream(d, exclude));
+      }
+    }
+  }
+
+  // Sembunyikan yang harus disembunyikan
+  for (const id of toHide){
+    nodeEls.get(id)?.classList.add('hidden');
+  }
+
+  refreshWireOpacity(toHide);
+}
+function refreshWireOpacity(hiddenSet){
+  wireEls.forEach(w=>w.el.setAttribute("class","wire"));
+  for (const {from,to} of EDGES){
+    if(hiddenSet.has(to)){
+      const item=wireEls.find(w=>w.key===from+"->"+to);
+      if(item) item.el.setAttribute("class","wire faint");
+    }
+  }
+}
+function escapeHtml(s){
+  return s.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+}
+
+// initial
+drawAllWires();
+evaluateVisibility();
+window.addEventListener("resize",()=>{ drawAllWires(); evaluateVisibility(); });
+
+// placeholder markRelations (biar tidak error)
+function markRelations(id){
+  // nanti bisa diisi sesuai logika highlight left/right
+}
+
+function updateCanvasSize() {
+  // 1. Temukan batas paling kanan dan bawah dari semua node
+  let maxX = 0;
+  let maxY = 0;
+  const margin = 200; // margin ekstra agar garis tidak terpotong
+
+  for (const node of NODES) {
+    if (node.x > maxX) maxX = node.x;
+    if (node.y > maxY) maxY = node.y;
+  }
+
+  // 2. Atur ukuran .stage
+  stage.style.width = (maxX + margin) + "px";
+  stage.style.height = (maxY + margin) + "px";
+
+  // 3. Update viewBox di SVG agar mencakup seluruh area
+  wires.setAttribute("viewBox", `0 0 ${maxX + margin} ${maxY + margin}`);
+}
+
+// Panggil setelah semuanya di-render
+updateCanvasSize();
+
+window.addEventListener("resize", () => {
+  updateCanvasSize();
+  drawAllWires();
+  evaluateVisibility();
+});
+
+
+</script>
+</body>
+</html>
